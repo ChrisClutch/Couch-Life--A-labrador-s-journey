@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Salem Thrift Adventure Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Map Your Thrift Adventure — Salem, Oregon</h1>
+    <p>Find nearby resale stores, sort by distance, and open directions instantly.</p>
+  </header>
+
+  <main>
+    <section class="controls">
+      <button id="locateBtn">Use my location</button>
+      <a href="https://salem-or-thriftstore-directory.pages.dev/" target="_blank" rel="noopener noreferrer">Original directory</a>
+      <span id="status">Select “Use my location” to see closest stores.</span>
+    </section>
+
+    <section class="layout">
+      <div id="map"></div>
+      <aside>
+        <h2>Closest thrift & resale stores</h2>
+        <ul id="storeList"></ul>
+      </aside>
+    </section>
+  </main>
+
+  <template id="storeCardTemplate">
+    <li class="store-card">
+      <img alt="Store location" class="store-photo" />
+      <div>
+        <h3></h3>
+        <p class="address"></p>
+        <p class="distance"></p>
+        <div class="links">
+          <a class="website" target="_blank" rel="noopener noreferrer">Website</a>
+          <a class="directions" target="_blank" rel="noopener noreferrer">Directions</a>
+          <a class="streetview" target="_blank" rel="noopener noreferrer">Street View</a>
+        </div>
+      </div>
+    </li>
+  </template>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="app.js"></script>
+</body>
+</html>
