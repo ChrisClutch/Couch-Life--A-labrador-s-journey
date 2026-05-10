@@ -75,3 +75,8 @@ aside {
   .layout { grid-template-columns: 1fr; }
   #map, aside { max-height: none; min-height: 50vh; }
 }
+
+select#preferenceSelect { padding: .55rem .6rem; border-radius: .5rem; border: 1px solid #cbd5e1; }
+#tourBtn { background: #b91c1c; color: #fff; }
+#curatedBtn { background: #7e22ce; color: #fff; }
+.store-card { cursor: pointer; }

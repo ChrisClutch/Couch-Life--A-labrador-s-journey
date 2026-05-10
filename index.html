@@ -16,9 +16,14 @@
   <main>
     <section class="controls">
       <button id="locateBtn">Use my location</button>
-      <a href="https://salem-or-thriftstore-directory.pages.dev/" target="_blank" rel="noopener noreferrer">Original directory</a>
-      <a href="https://salem-thrift-trek.pages.dev/" target="_blank" rel="noopener noreferrer">Cloudflare URL</a>
-      <span id="status">Select “Use my location” to see closest stores.</span>
+      <select id="preferenceSelect">
+        <option value="closest">Preference: Closest stores</option>
+        <option value="charity">Preference: Charity thrifts</option>
+        <option value="antiques">Preference: Antiques/collectibles</option>
+      </select>
+      <button id="tourBtn">Custom Thrift Tour</button>
+      <button id="curatedBtn">Curated Thrift Tour!</button>
+      <span id="status">Select “Use my location” to see closest stores and build your tour.</span>
     </section>
 
     <section class="layout">

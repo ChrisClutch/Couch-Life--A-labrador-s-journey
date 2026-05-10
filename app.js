@@ -5,7 +5,7 @@ const stores = [
     lng: -123.0407,
     address: "3535 Commercial St SE, Salem, OR 97302",
     website: "https://meetgoodwill.org/",
-    image: "https://maps.googleapis.com/maps/api/streetview?size=800x450&location=3535+Commercial+St+SE+Salem+OR&fov=90"
+    image: "https://source.unsplash.com/800x450/?thrift,storefront"
   },
   {
     name: "St. Vincent de Paul Thrift Store",
@@ -13,7 +13,7 @@ const stores = [
     lng: -123.0421,
     address: "1860 Broadway St NE, Salem, OR 97301",
     website: "https://www.svdp.us/",
-    image: "https://maps.googleapis.com/maps/api/streetview?size=800x450&location=1860+Broadway+St+NE+Salem+OR&fov=90"
+    image: "https://source.unsplash.com/800x450/?vintage,shop"
   },
   {
     name: "Salvation Army Family Store",
@@ -21,7 +21,7 @@ const stores = [
     lng: -123.0256,
     address: "2855 Broadway St NE, Salem, OR 97303",
     website: "https://satruck.org/",
-    image: "https://maps.googleapis.com/maps/api/streetview?size=800x450&location=2855+Broadway+St+NE+Salem+OR&fov=90"
+    image: "https://source.unsplash.com/800x450/?resale,store"
   },
   {
     name: "Engelberg Antiks & Collectibles",
@@ -29,7 +29,7 @@ const stores = [
     lng: -123.0354,
     address: "1485 Market St NE, Salem, OR 97301",
     website: "https://engelbergantiques.com/",
-    image: "https://maps.googleapis.com/maps/api/streetview?size=800x450&location=1485+Market+St+NE+Salem+OR&fov=90"
+    image: "https://source.unsplash.com/800x450/?antiques,shop"
   },
   {
     name: "SuperThrift - Union Gospel Mission",
@@ -37,7 +37,7 @@ const stores = [
     lng: -123.0309,
     address: "626 Lancaster Dr NE, Salem, OR 97301",
     website: "https://ugmsalem.org/superthrift/",
-    image: "https://maps.googleapis.com/maps/api/streetview?size=800x450&location=626+Lancaster+Dr+NE+Salem+OR&fov=90"
+    image: "https://source.unsplash.com/800x450/?thrift,clothing"
   }
 ];
 
@@ -47,11 +47,17 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "&copy; OpenStreetMap"
 }).addTo(map);
 
-const markers = [];
 const storeList = document.getElementById("storeList");
 const cardTemplate = document.getElementById("storeCardTemplate");
 const statusEl = document.getElementById("status");
+const tourBtn = document.getElementById("tourBtn");
+const curatedBtn = document.getElementById("curatedBtn");
+const preferenceSelect = document.getElementById("preferenceSelect");
+
+let currentOrigin = null;
 let userMarker;
+let routeLine;
+const markers = new Map();
 
 function haversineMiles(a, b) {
   const R = 3958.8;
@@ -62,27 +68,49 @@ function haversineMiles(a, b) {
   return 2 * R * Math.asin(Math.sqrt(x));
 }
 
-function googleMapsDirections(lat, lng, label) {
-  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&destination_place_id=${encodeURIComponent(label)}`;
+function googleMapsDirections(lat, lng) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 }
 
 function streetViewLink(lat, lng) {
   return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`;
 }
 
+function focusStore(store) {
+  map.setView([store.lat, store.lng], 15);
+  markers.get(store.name)?.openPopup();
+}
+
+function filteredStores() {
+  const preference = preferenceSelect.value;
+  if (preference === "closest") return [...stores];
+  if (preference === "antiques") return stores.filter((s) => s.name.includes("Antik") || s.name.includes("Collectibles"));
+  if (preference === "charity") return stores.filter((s) => s.name.includes("Goodwill") || s.name.includes("Salvation") || s.name.includes("Vincent") || s.name.includes("Mission"));
+  return [...stores];
+}
+
+function clearRoute() {
+  if (routeLine) {
+    map.removeLayer(routeLine);
+    routeLine = null;
+  }
+}
+
 function renderStores(origin) {
   storeList.innerHTML = "";
-  markers.forEach((m) => map.removeLayer(m));
-  markers.length = 0;
+  markers.forEach((marker) => map.removeLayer(marker));
+  markers.clear();
+  clearRoute();
 
-  const sorted = [...stores]
+  const sorted = filteredStores()
     .map((s) => ({ ...s, miles: origin ? haversineMiles(origin, s) : null }))
     .sort((a, b) => (a.miles ?? 999) - (b.miles ?? 999));
 
   sorted.forEach((store) => {
     const marker = L.marker([store.lat, store.lng]).addTo(map);
     marker.bindPopup(`<strong>${store.name}</strong><br/>${store.address}`);
-    markers.push(marker);
+    marker.on("click", () => focusStore(store));
+    markers.set(store.name, marker);
 
     const card = cardTemplate.content.cloneNode(true);
     card.querySelector("h3").textContent = store.name;
@@ -92,10 +120,36 @@ function renderStores(origin) {
     img.src = store.image;
     img.alt = `${store.name} location photo`;
     card.querySelector(".website").href = store.website;
-    card.querySelector(".directions").href = googleMapsDirections(store.lat, store.lng, store.name);
+    card.querySelector(".directions").href = googleMapsDirections(store.lat, store.lng);
     card.querySelector(".streetview").href = streetViewLink(store.lat, store.lng);
+    card.querySelector(".store-card").addEventListener("click", () => focusStore(store));
     storeList.append(card);
   });
+
+  if (!sorted.length) {
+    statusEl.textContent = "No stores matched that preference. Try a different option.";
+  }
+}
+
+function buildTour(curated = false) {
+  if (!currentOrigin) {
+    statusEl.textContent = "Use your location first, then build a thrift tour.";
+    return;
+  }
+  const options = renderSortedByOrigin();
+  const selected = (curated ? options.slice(0, 3) : options.slice(0, 4));
+  const points = [[currentOrigin.lat, currentOrigin.lng], ...selected.map((s) => [s.lat, s.lng])];
+  clearRoute();
+  routeLine = L.polyline(points, { color: curated ? "#9333ea" : "#dc2626", weight: 4 }).addTo(map);
+  map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+  const names = selected.map((s) => s.name).join(" → ");
+  statusEl.textContent = `${curated ? "Curated Thrift Tour" : "Custom Thrift Tour"}: ${names}`;
+}
+
+function renderSortedByOrigin() {
+  return filteredStores()
+    .map((s) => ({ ...s, miles: currentOrigin ? haversineMiles(currentOrigin, s) : null }))
+    .sort((a, b) => (a.miles ?? 999) - (b.miles ?? 999));
 }
 
 renderStores(null);
@@ -108,17 +162,17 @@ document.getElementById("locateBtn").addEventListener("click", () => {
 
   statusEl.textContent = "Finding your location...";
   navigator.geolocation.getCurrentPosition((position) => {
-    const origin = {
-      lat: position.coords.latitude,
-      lng: position.coords.longitude
-    };
-
+    currentOrigin = { lat: position.coords.latitude, lng: position.coords.longitude };
     if (userMarker) map.removeLayer(userMarker);
-    userMarker = L.marker([origin.lat, origin.lng]).addTo(map).bindPopup("You are here");
-    map.setView([origin.lat, origin.lng], 13);
-    renderStores(origin);
+    userMarker = L.marker([currentOrigin.lat, currentOrigin.lng]).addTo(map).bindPopup("You are here");
+    map.setView([currentOrigin.lat, currentOrigin.lng], 13);
+    renderStores(currentOrigin);
     statusEl.textContent = "Stores sorted by distance from your location.";
   }, () => {
     statusEl.textContent = "Location access was denied. Showing all stores.";
   });
 });
+
+preferenceSelect.addEventListener("change", () => renderStores(currentOrigin));
+tourBtn.addEventListener("click", () => buildTour(false));
+curatedBtn.addEventListener("click", () => buildTour(true));
